@@ -17,7 +17,7 @@ URL_STORE = {}
 async def start_cmd(client, message):
     welcome_text = (
         "👋 **ഹലോ! ഞാൻ ഒരു യൂട്യൂബ് വീഡിയോ ഡൗൺലോഡ് ബോട്ടാണ്.**\n\n"
-        "🎬 ഏത് യൂട്യൂബ് ലിങ്കും നേരിട്ട് അയച്ചു തരൂ (അല്ലെങ്കിൽ /ytdl <link>), "
+        "🎬 ഏത് യൂട്യൂബ് ലിങ്കും നേരിട്ട് അയച്ചു തരൂ, "
         "ഞാൻ ക്വാളിറ്റി ബട്ടണുകൾ തരാം."
     )
     await message.reply_text(welcome_text)
@@ -26,14 +26,21 @@ async def start_cmd(client, message):
 @app.on_message(filters.regex(r'https?://(?:www\.)?youtube\.com|youtu\.be') | filters.command("ytdl"))
 async def youtube_link(client, message):
     # /ytdl കമാൻഡ് ആണെങ്കിൽ ലിങ്ക് എടുക്കാൻ
-    if message.command:
-        if len(message.command) > 1:
-            url = message.command[1]
-        else:
-            await message.reply_text("⚠️ ദയവായി ലിങ്ക് കൂടെ നൽകുക. (ഉദാഹരണത്തിന്: `/ytdl <link>` അല്ലെങ്കിൽ നേരിട്ട് ലിങ്ക് അയക്കുക)")
-            return
+    if message.command and len(message.command) > 1:
+        url = message.command[1]
     else:
-        url = message.text.strip()
+        # കമാൻഡ് അല്ലെങ്കിലോ ലിങ്ക് കൂടെ കൊടുത്തില്ലെങ്കിലോ മെസ്സേജിൽ ഉള്ള ലിങ്ക് എടുക്കാൻ
+        # (ഇത് /ytdl എറർ ഒഴിവാക്കാൻ സഹായിക്കും)
+        text = message.text.strip()
+        if text.startswith("/ytdl"):
+            parts = text.split(" ", 1)
+            if len(parts) > 1:
+                url = parts[1]
+            else:
+                await message.reply_text("⚠️ ദയവായി ലിങ്ക് കൂടെ നൽകുക. (ഉദാഹരണത്തിന്: `/ytdl <link>` അല്ലെങ്കിൽ നേരിട്ട് ലിങ്ക് അയക്കുക)")
+                return
+        else:
+            url = text
 
     msg_id = message.id
     URL_STORE[msg_id] = url
@@ -75,13 +82,13 @@ async def download_callback(client, callback_query: CallbackQuery):
     else:
         fmt = 'best'
 
-    # യൂട്യൂബ് ബോട്ട് പരിശോധന ഒഴിവാക്കാനുള്ള എക്സ്ട്രാ ഓപ്ഷനുകളും കുക്കീസും
+    # കുക്കീസ് ഫോൾഡറിലെ ഫയൽ പാത്ത് ഇവിടെ നൽകിയിരിക്കുന്നു
     ydl_opts = {
         'format': fmt,
         'outtmpl': 'downloads/%(id)s.%(ext)s',
         'quiet': True,
         'no_warnings': True,
-        'cookiefile': 'cookies.txt',  # <-- കുക്കീസ് ഫയൽ ഇവിടെ ചേർത്തിട്ടുണ്ട്
+        'cookiefile': 'cookies/cookies.txt',  # <-- cookies എന്ന ഫോൾഡറിലെ cookies.txt ഫയൽ
         'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
     }
 
