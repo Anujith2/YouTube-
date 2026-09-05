@@ -10,28 +10,32 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 app = Client("yt_quality_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-# ഡൗൺലോഡ് ചെയ്യാനുള്ള ഫോൾഡർ ഉറപ്പാക്കുന്നു
 os.makedirs("downloads", exist_ok=True)
-
-# താൽക്കാലികമായി URL സേവ് ചെയ്യാൻ ഒരു ഡിക്ഷണറി
 URL_STORE = {}
 
 @app.on_message(filters.command("start"))
 async def start_cmd(client, message):
     welcome_text = (
         "👋 **ഹലോ! ഞാൻ ഒരു യൂട്യൂബ് വീഡിയോ ഡൗൺലോഡ് ബോട്ടാണ്.**\n\n"
-        "🎬 എനിക്ക് ഏത് യൂട്യൂബ് ലിങ്കും അയച്ചു തരാവുന്നതാണ്. "
-        "ഞാൻ നിങ്ങൾക്ക് ഇഷ്ടമുള്ള ക്വാളിറ്റിയിൽ (1080p, 720p, 480p അല്ലെങ്കിൽ ഓഡിയോ) ഡൗൺലോഡ് ചെയ്ത് നൽകാം.\n\n"
-        "📌 *ഗ്രൂപ്പുകളിലും പ്രൈവറ്റ് ചാറ്റിലും എന്നെ ഉപയോഗിക്കാവുന്നതാണ്!*"
+        "🎬 ഏത് യൂട്യൂബ് ലിങ്കും നേരിട്ട് അയച്ചു തരൂ (അല്ലെങ്കിൽ /ytdl <link>), "
+        "ഞാൻ ക്വാളിറ്റി ബട്ടണുകൾ തരാം."
     )
     await message.reply_text(welcome_text)
 
-@app.on_message(filters.regex(r'https?://(?:www\.)?youtube\.com|youtu\.be'))
+# ലിങ്ക് മാത്രം അയക്കുമ്പോഴും /ytdl ലിങ്ക് എന്ന് അയക്കുമ്പോഴും വർക്ക് ചെയ്യാൻ
+@app.on_message(filters.regex(r'https?://(?:www\.)?youtube\.com|youtu\.be') | filters.command("ytdl"))
 async def youtube_link(client, message):
-    url = message.text.strip()
+    # /ytdl കമാൻഡ് ആണെങ്കിൽ ലിങ്ക് എടുക്കാൻ
+    if message.command:
+        if len(message.command) > 1:
+            url = message.command[1]
+        else:
+            await message.reply_text("⚠️ ദയവായി ലിങ്ക് കൂടെ നൽകുക. (ഉദാഹരണത്തിന്: `/ytdl <link>` അല്ലെങ്കിൽ നേരിട്ട് ലിങ്ക് അയക്കുക)")
+            return
+    else:
+        url = message.text.strip()
+
     msg_id = message.id
-    
-    # URL വലിയതായതുകൊണ്ട് ഡിക്ഷണറിയിൽ സേവ് ചെയ്ത് യൂണീക്ക് കീ കൊടുക്കുന്നു
     URL_STORE[msg_id] = url
     
     keyboard = InlineKeyboardMarkup([
@@ -55,7 +59,7 @@ async def download_callback(client, callback_query: CallbackQuery):
     
     url = URL_STORE.get(msg_id)
     if not url:
-        await callback_query.answer("❌ URL expired or not found! Please send the link again.", show_alert=True)
+        await callback_query.answer("❌ URL expired! Please send the link again.", show_alert=True)
         return
 
     await callback_query.message.edit_text(f"📥 **Downloading ({quality}) from YouTube... Please wait.**")
@@ -71,11 +75,13 @@ async def download_callback(client, callback_query: CallbackQuery):
     else:
         fmt = 'best'
 
+    # യൂട്യൂബ് ബോട്ട് പരിശോധന ഒഴിവാക്കാനുള്ള എക്സ്ട്രാ ഓപ്ഷനുകൾ
     ydl_opts = {
         'format': fmt,
         'outtmpl': 'downloads/%(id)s.%(ext)s',
         'quiet': True,
         'no_warnings': True,
+        'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
     }
 
     try:
@@ -101,7 +107,6 @@ async def download_callback(client, callback_query: CallbackQuery):
             
         await callback_query.message.delete()
         
-        # മെമ്മറി ക്ലിയർ ചെയ്യാൻ ഡിക്ഷണറിയിൽ നിന്ന് ഡിലീറ്റ് ചെയ്യുന്നു
         if msg_id in URL_STORE:
             del URL_STORE[msg_id]
 
@@ -110,3 +115,4 @@ async def download_callback(client, callback_query: CallbackQuery):
 
 if __name__ == "__main__":
     app.run()
+    
