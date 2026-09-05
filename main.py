@@ -75,12 +75,13 @@ async def download_callback(client, callback_query: CallbackQuery):
     else:
         fmt = 'best'
 
-    # യൂട്യൂബ് ബോട്ട് പരിശോധന ഒഴിവാക്കാനുള്ള എക്സ്ട്രാ ഓപ്ഷനുകൾ
+    # യൂട്യൂബ് ബോട്ട് പരിശോധന ഒഴിവാക്കാനുള്ള എക്സ്ട്രാ ഓപ്ഷനുകളും കുക്കീസും
     ydl_opts = {
         'format': fmt,
         'outtmpl': 'downloads/%(id)s.%(ext)s',
         'quiet': True,
         'no_warnings': True,
+        'cookiefile': 'cookies.txt',  # <-- കുക്കീസ് ഫയൽ ഇവിടെ ചേർത്തിട്ടുണ്ട്
         'extractor_args': {'youtube': {'player_client': ['android', 'web']}},
     }
 
