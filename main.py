@@ -10,23 +10,38 @@ BOT_TOKEN = os.environ.get("BOT_TOKEN")
 
 app = Client("yt_quality_bot", api_id=API_ID, api_hash=API_HASH, bot_token=BOT_TOKEN)
 
-@app.on_message(filters.command("start") & filters.private)
-async def start_cmd(client, message):
-    await message.reply_text("👋 **ഹലോ! യൂട്യൂബ് വീഡിയോ ലിങ്ക് അയച്ചു തരൂ, ക്വാളിറ്റി സെലക്ട് ചെയ്യാൻ ബട്ടണുകൾ ലഭിക്കും.**")
+# ഡൗൺലോഡ് ചെയ്യാനുള്ള ഫോൾഡർ ഉറപ്പാക്കുന്നു
+os.makedirs("downloads", exist_ok=True)
 
-@app.on_message(filters.regex(r'https?://(?:www\.)?youtube\.com|youtu\.be') & filters.private)
+# താൽക്കാലികമായി URL സേവ് ചെയ്യാൻ ഒരു ഡിക്ഷണറി
+URL_STORE = {}
+
+@app.on_message(filters.command("start"))
+async def start_cmd(client, message):
+    welcome_text = (
+        "👋 **ഹലോ! ഞാൻ ഒരു യൂട്യൂബ് വീഡിയോ ഡൗൺലോഡ് ബോട്ടാണ്.**\n\n"
+        "🎬 എനിക്ക് ഏത് യൂട്യൂബ് ലിങ്കും അയച്ചു തരാവുന്നതാണ്. "
+        "ഞാൻ നിങ്ങൾക്ക് ഇഷ്ടമുള്ള ക്വാളിറ്റിയിൽ (1080p, 720p, 480p അല്ലെങ്കിൽ ഓഡിയോ) ഡൗൺലോഡ് ചെയ്ത് നൽകാം.\n\n"
+        "📌 *ഗ്രൂപ്പുകളിലും പ്രൈവറ്റ് ചാറ്റിലും എന്നെ ഉപയോഗിക്കാവുന്നതാണ്!*"
+    )
+    await message.reply_text(welcome_text)
+
+@app.on_message(filters.regex(r'https?://(?:www\.)?youtube\.com|youtu\.be'))
 async def youtube_link(client, message):
     url = message.text.strip()
+    msg_id = message.id
     
-    # ക്വാളിറ്റി തെരഞ്ഞെടുക്കാനുള്ള ബട്ടണുകൾ
+    # URL വലിയതായതുകൊണ്ട് ഡിക്ഷണറിയിൽ സേവ് ചെയ്ത് യൂണീക്ക് കീ കൊടുക്കുന്നു
+    URL_STORE[msg_id] = url
+    
     keyboard = InlineKeyboardMarkup([
         [
-            InlineKeyboardButton("🎬 1080p", callback_data=f"dl|1080|{url}"),
-            InlineKeyboardButton("🎬 720p", callback_data=f"dl|720|{url}")
+            InlineKeyboardButton("🎬 1080p", callback_data=f"dl|1080|{msg_id}"),
+            InlineKeyboardButton("🎬 720p", callback_data=f"dl|720|{msg_id}")
         ],
         [
-            InlineKeyboardButton("🎬 480p", callback_data=f"dl|480|{url}"),
-            InlineKeyboardButton("🎵 Audio (MP3)", callback_data=f"dl|audio|{url}")
+            InlineKeyboardButton("🎬 480p", callback_data=f"dl|480|{msg_id}"),
+            InlineKeyboardButton("🎵 Audio (MP3)", callback_data=f"dl|audio|{msg_id}")
         ]
     ])
     
@@ -34,13 +49,17 @@ async def youtube_link(client, message):
 
 @app.on_callback_query(filters.regex(r"^dl\|"))
 async def download_callback(client, callback_query: CallbackQuery):
-    data_parts = callback_query.data.split("|", 2)
+    data_parts = callback_query.data.split("|")
     quality = data_parts[1]
-    url = data_parts[2]
+    msg_id = int(data_parts[2])
     
+    url = URL_STORE.get(msg_id)
+    if not url:
+        await callback_query.answer("❌ URL expired or not found! Please send the link again.", show_alert=True)
+        return
+
     await callback_query.message.edit_text(f"📥 **Downloading ({quality}) from YouTube... Please wait.**")
     
-    # yt-dlp ഫോർമാറ്റ് സെറ്റിങ്സ്
     if quality == "1080":
         fmt = 'bestvideo[height<=1080][ext=mp4]+bestaudio[ext=m4a]/best[height<=1080][ext=mp4]/best'
     elif quality == "720":
@@ -81,10 +100,13 @@ async def download_callback(client, callback_query: CallbackQuery):
             os.remove(file_path)
             
         await callback_query.message.delete()
+        
+        # മെമ്മറി ക്ലിയർ ചെയ്യാൻ ഡിക്ഷണറിയിൽ നിന്ന് ഡിലീറ്റ് ചെയ്യുന്നു
+        if msg_id in URL_STORE:
+            del URL_STORE[msg_id]
 
     except Exception as e:
         await callback_query.message.edit_text(f"❌ **Error:** `{e}`")
 
 if __name__ == "__main__":
     app.run()
-
