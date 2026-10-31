@@ -26,7 +26,7 @@ SERIALS_LIST = [
     "oru chiri iru chiri bumper chiri", "the great family challenge", "roopavathi", 
     "thenmavin kombath", "punnaram", "anju sundarikal", "amme mookambike", 
     "peythozhiyathe", "chattambipparu", "hridayam", "kanyadaanam", 
-    "swayamavarapanthal", "mangalyam thanthunanena"
+    "swayamavarapanthal", "mangalyam thanthunanena", "mukhachithram"
 ]
 
 @Client.on_message(filters.text & ~filters.private, group=-1)
