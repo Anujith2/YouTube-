@@ -9,8 +9,8 @@ from pyrogram.enums import ParseMode
 # BOT SETTINGS
 # ==========================================
 
-CHANNELS = [-1002015288592]
-AUTH_CHANNEL = -1002110922261
+CHANNELS = [-1003911112940]
+AUTH_CHANNEL = -1002110922261 -1003926879089
 BOT_USERNAME = "Anujith1bot"
 BANNER_PHOTO = "https://ibb.co/cS5zrTGD"
 
